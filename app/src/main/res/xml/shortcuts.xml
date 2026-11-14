@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:shortcutId="screen_off"
+        android:shortcutShortLabel="@string/shortcut_screen_off"
+        android:shortcutLongLabel="@string/shortcut_screen_off_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="com.reynaldo.optimizador.ScreenOffActivity"
+            android:targetPackage="com.reynaldo.optimizador" />
+    </shortcut>
+</shortcuts>

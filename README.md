@@ -6,3 +6,6 @@ Funciones: forzar 4G (abre la pantalla Información del teléfono), compilar app
 desactivar bloatware, ahorro extremo de datos y brillo (activar/revertir) y monitor de RAM/temperatura.
 
 Compilar: sube todo a GitHub -> Actions -> "Build APK" -> Artifacts -> Optimizador-APK.
+
+Atajo en el icono: mantén presionado el icono de Optimizador (en launchers que muestran el menú
+del icono) y toca "Apagar pantalla". Necesita Shizuku activo y con el permiso concedido.
