@@ -3,6 +3,7 @@ package com.reynaldo.optimizador;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -124,6 +125,7 @@ public class MainActivity extends Activity {
         shizukuInfo.setPadding(0, dp(4), 0, dp(8));
         root.addView(shizukuInfo);
 
+        root.addView(button("Forzar 4G", 0xFF1F1F1F, v -> open4g()));
         root.addView(button("1  Optimizar apps (compilar)", 0xFF1F1F1F, v -> doCompile()));
         root.addView(button("2  Cerrar apps en segundo plano", 0xFF1F1F1F, v -> doKill()));
         root.addView(button("3  Limpiar caché de todo", 0xFF1F1F1F, v -> doCache()));
@@ -348,6 +350,57 @@ public class MainActivity extends Activity {
                 .show();
     }
 
+    // ---------------------------------------------------------------- Forzar 4G
+
+    private static final String[] RADIO_PKGS = {"com.android.phone", "com.android.settings"};
+
+    /** Busca la pantalla "Información del teléfono" (RadioInfo) en el propio sistema. */
+    @SuppressWarnings("deprecation")
+    private ComponentName findRadioInfo() {
+        for (String pkg : RADIO_PKGS) {
+            try {
+                android.content.pm.ActivityInfo[] acts =
+                        pm.getPackageInfo(pkg, PackageManager.GET_ACTIVITIES).activities;
+                if (acts == null) continue;
+                for (android.content.pm.ActivityInfo a : acts) {
+                    if (a.name.endsWith(".RadioInfo")) return new ComponentName(pkg, a.name);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
+
+    private void open4g() {
+        final ComponentName cn = findRadioInfo();
+        if (cn != null) {
+            try {
+                startActivity(new Intent().setComponent(cn).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                return;
+            } catch (Throwable ignored) {
+                // No es accesible desde una app normal: se prueba con Shizuku.
+            }
+        }
+        if (!ready()) return;
+        final String target = cn == null ? null : cn.flattenToShortString();
+        runTask("Abriendo información del teléfono", () -> {
+            String out = "";
+            boolean opened = false;
+            if (target != null && target.matches("[A-Za-z0-9._/$]+")) {
+                out = Sh.run("am start -W -n '" + target + "'");
+                opened = !out.contains("Error") && !out.contains("Exception");
+            }
+            if (opened) return "Abierto: " + target;
+            Sh.run("am broadcast -a android.provider.Telephony.SECRET_CODE -d android_secret_code://4636");
+            String o = out.trim();
+            if (o.length() > 300) o = o.substring(0, 300);
+            return "No se pudo abrir la pantalla directamente.\n"
+                    + "Se probó también el código *#*#4636#*#*; si no apareció nada, "
+                    + "tu teléfono no permite abrir esa pantalla desde aquí.\n"
+                    + "Pantalla buscada: " + (target == null ? "no encontrada" : target) + "\n" + o;
+        });
+    }
+
     // ---------------------------------------------------------------- 1. Compilar
 
     private void doCompile() {
@@ -510,7 +563,6 @@ public class MainActivity extends Activity {
             Set<String> blocked = blockedSet();
             Set<String> eco = new HashSet<>();
             StringBuilder c = new StringBuilder();
-            c.append("settings put global low_power 1; ");
             c.append("cmd netpolicy set restrict-background true; ");
             c.append("settings put system screen_brightness_mode 0; ");
             c.append("settings put system screen_brightness 30; ");
@@ -525,7 +577,7 @@ public class MainActivity extends Activity {
             c.append("am kill-all");
             Sh.run(c.toString());
             sp.edit().putBoolean("eco", true).putStringSet("eco_apps", eco).apply();
-            return "Ahorro extremo ACTIVO ✔\nAhorro de batería, ahorro de datos, brillo bajo, apps cerradas y restringidas.";
+            return "Ahorro extremo ACTIVO ✔\nAhorro de datos, brillo bajo, apps cerradas y restringidas.";
         });
     }
 
@@ -533,7 +585,6 @@ public class MainActivity extends Activity {
         runTask("Revirtiendo ahorro extremo", () -> {
             Set<String> eco = new HashSet<>(sp.getStringSet("eco_apps", new HashSet<>()));
             StringBuilder c = new StringBuilder();
-            c.append("settings put global low_power 0; ");
             c.append("cmd netpolicy set restrict-background false; ");
             c.append("settings put system screen_brightness_mode ").append(sp.getInt("bm", 0)).append("; ");
             c.append("settings put system screen_brightness ").append(sp.getInt("b", 100)).append("; ");
